@@ -59,6 +59,7 @@ class Tool:
         print("Profile added")
         print("Downloading profile")
         profile.download_posts()
+        self.datastore.save_profile(profile)
 
     def check_match(self) -> None:
         print("ERROR: This has not yet been implemented, sorry!")  # TODO
