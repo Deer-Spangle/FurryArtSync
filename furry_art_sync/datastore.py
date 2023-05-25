@@ -1,6 +1,8 @@
 import os
+from typing import TYPE_CHECKING
 
-from furry_art_sync.sites.site import SiteProfile
+if TYPE_CHECKING:
+    from furry_art_sync.sites.site import SiteProfile
 
 
 class Datastore:
@@ -9,5 +11,5 @@ class Datastore:
     def __init__(self):
         os.makedirs(self.STORE_DIR, exist_ok=True)
 
-    def save_profile(self, profile: SiteProfile) -> None:
+    def save_profile(self, profile: "SiteProfile") -> None:
         pass  # TODO
