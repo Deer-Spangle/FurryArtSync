@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from pathlib import Path
 
 import requests
@@ -27,13 +28,12 @@ class FurAffinitySiteProfile(SiteProfile):
         return cls(username)
 
     def validate(self) -> bool:
-        resp = requests.get(f"https://faexport.spangle.org.uk/user/{self.username}")
+        resp = self._request_from_api(f"/user/{self.username}.json")
         if resp.status_code == 404:
             return False
         return True
 
     def download_posts(self) -> None:
-        os.makedirs(self.profile_directory(), exist_ok=True)
         page = 1
         while self._download_page("gallery", page):
             page += 1
@@ -47,22 +47,45 @@ class FurAffinitySiteProfile(SiteProfile):
         directory = self.profile_directory()
         if folder == "scraps":
             directory = directory / "Scraps"
-        resp = requests.get(f"https://faexport.spangle.org.uk/user/{self.username}/{folder}.json?full=1&page={page}")
+        os.makedirs(directory, exist_ok=True)
+        resp = self._request_from_api(f"/user/{self.username}/{folder}.json?full=1&page={page}")
         resp_json = resp.json()
         if not resp_json:
             return False
         for post_data in resp.json():
             post_id = post_data["id"]
             print(f"Downloading post {post_id}")
-            full_post_resp = requests.get(f"https://faexport.spangle.org.uk/submission/{post_id}.json")
+            metadata_path = directory / f"{post_id}.json"
+            if os.path.exists(metadata_path):
+                continue
+            full_post_resp = self._request_from_api(f"/submission/{post_id}.json")
             full_post_data = full_post_resp.json()
-            with open(directory / f"{post_id}.json", "w") as f:
+            with open(metadata_path, "w") as f:
                 json.dump(full_post_data, f)
             image_url = full_post_data["download"]
             image_ext = image_url.split(".")[-1]
             self._download_file(image_url, directory / f"{post_id}.{image_ext}")
 
+    def _request_from_api(self, path: str) -> requests.Response:
+        max_attempts = 10
+        attempt = 0
+        resp = None
+        while attempt < max_attempts:
+            resp = requests.get(f"https://faexport.spangle.org.uk/{path.lstrip('/')}")
+            if resp.status_code == 503:
+                # Cloudflare error
+                time.sleep(attempt * 0.5)
+                continue
+            break
+        if resp is None:
+            raise Exception("Request did not get made to FAExport API")
+        if resp.status_code == 503:
+            raise Exception("FA seems to be under cloudflare protection at the moment")
+        return resp
+
     def _download_file(self, image_url: str, target_path: Path) -> None:
+        if os.path.exists(target_path):
+            return
         resp = requests.get(image_url)
         image_content = resp.content
         with open(target_path, "wb") as f:
