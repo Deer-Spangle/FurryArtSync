@@ -1,13 +1,16 @@
+import glob
 import json
 import os.path
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, TYPE_CHECKING
 
 import gallery_dl
 
 from furry_art_sync.datastore import Datastore
-from furry_art_sync.sites.post import Post
+
+if TYPE_CHECKING:
+    from furry_art_sync.sites.post import Post
 
 
 class SiteProfile(ABC):
@@ -16,8 +19,20 @@ class SiteProfile(ABC):
     def validate(self) -> bool:
         raise NotImplementedError
 
-    def list_local_posts(self) -> List[Post]:
-        pass  # TODO
+    @abstractmethod
+    def build_post(self, submission_file: Path, metadata_file: Path, post_metadata: Dict) -> "Post":
+        raise NotImplementedError
+
+    def list_local_posts(self) -> List["Post"]:
+        metadata_files = glob.glob("*.json", root_dir=self.profile_directory())
+        posts = []
+        for metadata_file in metadata_files:
+            submission_pattern = metadata_file.removesuffix("json") + "*"
+            submission_file = [
+                s for s in glob.glob(submission_pattern, root_dir=self.profile_directory()) if not s.endswith(".json")
+            ][0]
+            posts.append(self.build_post(submission_file, metadata_file))
+        return posts
 
     def configure_gallery_dl(self) -> None:
         pass  # Sites can optionally override this, to set other gallery dl config
@@ -37,7 +52,8 @@ class SiteProfile(ABC):
             with open(config_path, "w") as f:
                 json.dump({}, f)
         gallery_dl.config.load([config_path], strict=True)
-        gallery_dl.config.set(("extractor",), "base-directory", str(self.profile_directory()))
+        gallery_dl.config.set(("extractor",), "base-directory", ".")
+        gallery_dl.config.set(("extractor",), "directory", self.profile_directory().parts)
         gallery_dl.config.set(("extractor",), "filename", "{id}.{extension}")
         gallery_dl.config.set(("extractor",), "postprocessors", self.gallery_dl_postprocessors())
         self.configure_gallery_dl()

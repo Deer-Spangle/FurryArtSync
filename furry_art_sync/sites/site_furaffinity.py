@@ -2,11 +2,31 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Optional, List, Dict
 
 import requests
 
 from furry_art_sync.datastore import Datastore
+from furry_art_sync.sites.post import Post
 from furry_art_sync.sites.site import SiteProfile
+
+
+class FurAffinityPost(Post):
+    @property
+    def link(self) -> str:
+        pass
+
+    @property
+    def title(self) -> Optional[str]:
+        return self.metadata_raw["title"]
+
+    @property
+    def description(self) -> Optional[str]:
+        return self.metadata_raw["description"]
+
+    @property
+    def tags(self) -> Optional[List[str]]:
+        return self.metadata_raw["keywords"]
 
 
 class FurAffinitySiteProfile(SiteProfile):
@@ -61,7 +81,7 @@ class FurAffinitySiteProfile(SiteProfile):
             full_post_resp = self._request_from_api(f"/submission/{post_id}.json")
             full_post_data = full_post_resp.json()
             with open(metadata_path, "w") as f:
-                json.dump(full_post_data, f)
+                json.dump(full_post_data, f, indent=2)
             image_url = full_post_data["download"]
             image_ext = image_url.split(".")[-1]
             self._download_file(image_url, directory / f"{post_id}.{image_ext}")
@@ -90,3 +110,11 @@ class FurAffinitySiteProfile(SiteProfile):
         image_content = resp.content
         with open(target_path, "wb") as f:
             f.write(image_content)
+
+    def build_post(self, submission_file: Path, metadata_file: Path, post_metadata: Dict) -> Post:
+        return FurAffinityPost(
+            submission_file,
+            metadata_file,
+            post_metadata,
+            self,
+        )
