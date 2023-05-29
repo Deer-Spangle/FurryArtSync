@@ -62,4 +62,25 @@ class Tool:
         self.datastore.save_profile(profile)
 
     def check_match(self) -> None:
-        print("ERROR: This has not yet been implemented, sorry!")  # TODO
+        print("First, let's set up your FA data")
+        while True:
+            fa_profile: SiteProfile = FurAffinitySiteProfile.user_setup_profile()
+            valid = fa_profile.validate()
+            if not valid:
+                print("This does not seem to be a valid FA profile")
+                continue
+            break
+        print("Okay, now setup your weasyl data")
+        while True:
+            weasyl_profile: SiteProfile = WeasylSiteProfile.user_setup_profile()
+            valid = weasyl_profile.validate()
+            if not valid:
+                print("This does not seem to be a valid Weasyl profile")
+                continue
+            break
+        fa_posts = fa_profile.list_local_posts()
+        weasyl_posts = weasyl_profile.list_local_posts()
+        print(f"You have {len(fa_posts)} posts on FA")
+        print(f"You have {len(weasyl_posts)} posts on Weasyl")
+        for weasyl_post in weasyl_posts:
+            print(weasyl_post)
