@@ -27,11 +27,15 @@ class SiteProfile(ABC):
         metadata_files = glob.glob("*.json", root_dir=self.profile_directory())
         posts = []
         for metadata_file in metadata_files:
+            metadata_path = self.profile_directory() / metadata_file
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
             submission_pattern = metadata_file.removesuffix("json") + "*"
             submission_file = [
                 s for s in glob.glob(submission_pattern, root_dir=self.profile_directory()) if not s.endswith(".json")
             ][0]
-            posts.append(self.build_post(submission_file, metadata_file))
+            submission_path = self.profile_directory() / submission_file
+            posts.append(self.build_post(submission_path, metadata_path, metadata))
         return posts
 
     def configure_gallery_dl(self) -> None:
