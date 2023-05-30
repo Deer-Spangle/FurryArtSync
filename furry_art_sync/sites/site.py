@@ -24,7 +24,7 @@ class SiteProfile(ABC):
         raise NotImplementedError
 
     def list_local_posts(self) -> List["Post"]:
-        metadata_files = glob.glob("*.json", root_dir=self.profile_directory())
+        metadata_files = glob.glob("**/*.json", root_dir=self.profile_directory(), recursive=True)
         posts = []
         for metadata_file in metadata_files:
             metadata_path = self.profile_directory() / metadata_file
