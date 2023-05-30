@@ -1,3 +1,5 @@
+import datetime
+import enum
 import hashlib
 import os.path
 from abc import abstractmethod, ABC
@@ -12,6 +14,12 @@ from furry_art_sync.sites.post_match import PostMatch, MD5Match, HDImageHashMatc
 
 if TYPE_CHECKING:
     from furry_art_sync.sites.site import SiteProfile
+
+
+class PostRating(enum.Enum):
+    SAFE = "safe"
+    MATURE = "mature"
+    EXPLICIT = "explicit"
 
 
 class Post(ABC):
@@ -44,6 +52,16 @@ class Post(ABC):
     @property
     @abstractmethod
     def tags(self) -> Optional[List[str]]:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def rating(self) -> Optional[PostRating]:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def datetime_posted(self) -> Optional[datetime.datetime]:
         raise NotImplementedError
 
     @property

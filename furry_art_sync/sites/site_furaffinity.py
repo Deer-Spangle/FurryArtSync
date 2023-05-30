@@ -1,13 +1,14 @@
 import json
 import os
 import time
+import datetime
 from pathlib import Path
 from typing import Optional, List, Dict
 
 import requests
 
 from furry_art_sync.datastore import Datastore
-from furry_art_sync.sites.post import Post
+from furry_art_sync.sites.post import Post, PostRating
 from furry_art_sync.sites.site import SiteProfile
 
 
@@ -27,6 +28,18 @@ class FurAffinityPost(Post):
     @property
     def tags(self) -> Optional[List[str]]:
         return self.metadata_raw["keywords"]
+
+    @property
+    def rating(self) -> Optional[PostRating]:
+        return {
+            "general": PostRating.SAFE,
+            "mature": PostRating.MATURE,
+            "adult": PostRating.EXPLICIT,
+        }[self.metadata_raw["rating"].lower()]
+
+    @property
+    def datetime_posted(self) -> Optional[datetime.datetime]:
+        return datetime.datetime.fromisoformat(self.metadata_raw["posted_at"])
 
 
 class FurAffinitySiteProfile(SiteProfile):
