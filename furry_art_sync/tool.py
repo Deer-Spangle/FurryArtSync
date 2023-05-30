@@ -82,5 +82,12 @@ class Tool:
         weasyl_posts = weasyl_profile.list_local_posts()
         print(f"You have {len(fa_posts)} posts on FA")
         print(f"You have {len(weasyl_posts)} posts on Weasyl")
-        for weasyl_post in weasyl_posts:
-            print(weasyl_post)
+        for fa_post in sorted(fa_posts, key=lambda post: post.link):
+            match_dict = fa_post.matches_any_posts(weasyl_posts)
+            match_dict_filtered = {
+                post: match for post, match in match_dict.items() if match is not None
+            }
+            if match_dict_filtered:
+                print(f"MATCH: {fa_post.link} matches {len(match_dict_filtered)} posts on weasyl")
+            else:
+                print(f"NO MATCH: {fa_post.link}")
