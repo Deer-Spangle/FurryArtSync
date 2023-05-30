@@ -89,9 +89,9 @@ class Post(ABC):
             return MD5Match()
         if self.is_static_image and other.is_static_image:
             if self.colour_hash - other.colour_hash < 2:
-                if self.high_fidelity_phash == other.high_fidelity_phash:
+                if self.high_fidelity_phash - other.high_fidelity_phash < 2:
                     return HDImageHashMatch()
-                if self.low_fidelity_phash == other.low_fidelity_phash:
+                if self.low_fidelity_phash - other.low_fidelity_phash < 2:
                     return LowDetailImageHashMatch()
         pass  # TODO: Implement for gifs?
 
