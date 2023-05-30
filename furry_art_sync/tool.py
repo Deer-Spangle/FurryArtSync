@@ -1,4 +1,6 @@
-from typing import Dict
+import os.path
+from functools import cache
+from typing import Dict, List
 
 from furry_art_sync.datastore import Datastore
 from furry_art_sync.sites.post import Post
@@ -82,22 +84,86 @@ class Tool:
                 print("This does not seem to be a valid Weasyl profile")
                 continue
             break
-        fa_posts = fa_profile.list_local_posts()
-        weasyl_posts = weasyl_profile.list_local_posts()
-        print(f"You have {len(fa_posts)} posts on FA")
-        print(f"You have {len(weasyl_posts)} posts on Weasyl")
-        for fa_post in sorted(fa_posts, key=lambda post: post.link):
-            match_dict = fa_post.matches_any_posts(weasyl_posts)
-            match_dict_filtered: Dict[Post, PostMatch] = {
-                post: match for post, match in match_dict.items() if match is not None
-            }
-            best_match_idx = max(HASH_PRIORITY.index(match) for match in match_dict_filtered.values())
-            best_matches = {
-                post: match for post, match in match_dict_filtered.items() if HASH_PRIORITY.index(match) == best_match_idx
-            }
-            if best_matches:
-                print(f"MATCH: {fa_post.link} matches {len(best_matches)} posts on weasyl:")
-                for weasyl_post, match in best_matches.items():
+        comparison = ProfileComparison(fa_profile, weasyl_profile)
+        print(f"You have {len(comparison.source_posts())} posts on FA")
+        print(f"You have {len(comparison.target_posts())} posts on Weasyl")
+        for fa_post, match_dict in comparison.matched_posts().items():
+            if match_dict:
+                print(f"MATCH: {fa_post.link} matches {len(match_dict)} posts on weasyl:")
+                for weasyl_post, match in match_dict.items():
                     print(f"- {weasyl_post.link}: {match.match_type}")
             else:
                 print(f"NO MATCH: {fa_post.link}")
+        print("Unmatched posts from source: ")
+        for fa_post in comparison.unmatched_source_posts():
+            print(f"- {fa_post.link}")
+        print("Unmatched posts from target: ")
+        for weasyl_post in comparison.unmatched_target_posts():
+            print(f"- {weasyl_post.link}")
+
+
+class ProfileComparison:
+    def __init__(self, source: SiteProfile, target: SiteProfile) -> None:
+        self.source = source
+        self.target = target
+        self.has_downloaded = False
+
+    def download(self) -> None:
+        if self.has_downloaded:
+            return
+        self.source.download_posts()
+        self.target.download_posts()
+
+    @cache
+    def source_posts(self) -> List[Post]:
+        self.download()
+        return self.source.list_local_posts()
+
+    @cache
+    def target_posts(self) -> List[Post]:
+        self.download()
+        return self.target.list_local_posts()
+
+    @cache
+    def matched_posts(self) -> Dict[Post, Dict[Post, PostMatch]]:
+        results = {}
+        source_posts = self.source_posts()
+        target_posts = self.target_posts()
+        for source_post in sorted(source_posts, key=lambda post: post.link):
+            match_dict = source_post.matches_any_posts(target_posts)
+            match_dict_filtered: Dict[Post, PostMatch] = {
+                post: match for post, match in match_dict.items() if match is not None
+            }
+            if not match_dict_filtered:
+                results[source_post] = {}
+                continue
+            best_match_priority = min(match.priority() for match in match_dict_filtered.values())
+            best_matches = {
+                post: match for post, match in match_dict_filtered.items() if match.priority() == best_match_priority
+            }
+            # TODO: Ensure each target post is only matched to once?
+            results[source_post] = best_matches
+            if best_matches:
+                print(f"MATCH: {source_post.link} matches {len(best_matches)} posts on target:")
+                for target_post, match in best_matches.items():
+                    print(f"- {target_post.link}: {match.match_type}")
+            else:
+                print(f"NO MATCH: {source_post.link}")
+        return results
+
+    def run(self) -> None:
+        pass
+
+    @cache
+    def unmatched_source_posts(self) -> List[Post]:
+        matched_posts = self.matched_posts()
+        return [
+            post for post, matches in matched_posts.items() if not matches
+        ]
+
+    @cache
+    def unmatched_target_posts(self) -> List[Post]:
+        target_posts = set(self.target_posts())
+        for matches in self.matched_posts().values():
+            target_posts -= set(matches.keys())
+        return list(target_posts)
