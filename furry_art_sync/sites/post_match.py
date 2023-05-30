@@ -1,6 +1,12 @@
+from typing import List, Type
+
+
 class PostMatch:
     def __init__(self, match_type: str):
         self.match_type = match_type
+
+    def priority(self) -> int:
+        return HASH_PRIORITY.index(self.__class__)
 
 
 class ManualMatch(PostMatch):
@@ -23,4 +29,4 @@ class LowDetailImageHashMatch(PostMatch):
         super().__init__("Low detail image hashes match")
 
 
-HASH_PRIORITY = [ManualMatch, MD5Match, HDImageHashMatch, LowDetailImageHashMatch]
+HASH_PRIORITY: List[Type[PostMatch]] = [ManualMatch, MD5Match, HDImageHashMatch, LowDetailImageHashMatch]
