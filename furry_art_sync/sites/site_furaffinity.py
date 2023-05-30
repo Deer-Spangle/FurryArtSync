@@ -85,6 +85,7 @@ class FurAffinitySiteProfile(SiteProfile):
             image_url = full_post_data["download"]
             image_ext = image_url.split(".")[-1]
             self._download_file(image_url, directory / f"{post_id}.{image_ext}")
+        return True
 
     def _request_from_api(self, path: str) -> requests.Response:
         max_attempts = 10
