@@ -14,7 +14,7 @@ from furry_art_sync.sites.site import SiteProfile
 class FurAffinityPost(Post):
     @property
     def link(self) -> str:
-        pass
+        return self.metadata_raw["link"]
 
     @property
     def title(self) -> Optional[str]:
