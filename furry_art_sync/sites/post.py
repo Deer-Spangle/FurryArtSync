@@ -8,7 +8,7 @@ from PIL import Image
 from pathlib import Path
 from typing import Optional, List, Dict, TYPE_CHECKING
 
-from furry_art_sync.sites.post_match import PostMatch
+from furry_art_sync.sites.post_match import PostMatch, MD5Match, HDImageHashMatch, LowDetailImageHashMatch
 
 if TYPE_CHECKING:
     from furry_art_sync.sites.site import SiteProfile
@@ -86,13 +86,13 @@ class Post(ABC):
 
     def matches_post(self, other: "Post") -> Optional[PostMatch]:
         if self.md5_hash == other.md5_hash:
-            return PostMatch("MD5 hashes match")
+            return MD5Match()
         if self.is_static_image and other.is_static_image:
             if self.colour_hash - other.colour_hash < 2:
                 if self.high_fidelity_phash == other.high_fidelity_phash:
-                    return PostMatch("HD image hashes match")
+                    return HDImageHashMatch()
                 if self.low_fidelity_phash == other.low_fidelity_phash:
-                    return PostMatch("Low detail image hashes match")
+                    return LowDetailImageHashMatch()
         pass  # TODO: Implement for gifs?
 
     def matches_any_posts(self, others: List["Post"]) -> Dict["Post", PostMatch]:
