@@ -1,4 +1,8 @@
+from typing import Dict
+
 from furry_art_sync.datastore import Datastore
+from furry_art_sync.sites.post import Post
+from furry_art_sync.sites.post_match import PostMatch, HASH_PRIORITY
 from furry_art_sync.sites.site import SiteProfile
 from furry_art_sync.sites.site_weasyl import WeasylSiteProfile
 from furry_art_sync.sites.site_furaffinity import FurAffinitySiteProfile
@@ -84,10 +88,16 @@ class Tool:
         print(f"You have {len(weasyl_posts)} posts on Weasyl")
         for fa_post in sorted(fa_posts, key=lambda post: post.link):
             match_dict = fa_post.matches_any_posts(weasyl_posts)
-            match_dict_filtered = {
+            match_dict_filtered: Dict[Post, PostMatch] = {
                 post: match for post, match in match_dict.items() if match is not None
             }
-            if match_dict_filtered:
-                print(f"MATCH: {fa_post.link} matches {len(match_dict_filtered)} posts on weasyl")
+            best_match_idx = max(HASH_PRIORITY.index(match) for match in match_dict_filtered.values())
+            best_matches = {
+                post: match for post, match in match_dict_filtered.items() if HASH_PRIORITY.index(match) == best_match_idx
+            }
+            if best_matches:
+                print(f"MATCH: {fa_post.link} matches {len(best_matches)} posts on weasyl:")
+                for weasyl_post, match in best_matches.items():
+                    print(f"- {weasyl_post.link}: {match.match_type}")
             else:
                 print(f"NO MATCH: {fa_post.link}")
