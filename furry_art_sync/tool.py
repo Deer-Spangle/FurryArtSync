@@ -96,10 +96,11 @@ class Tool:
                 print(f"NO MATCH: {fa_post.link}")
         print("Unmatched posts from source: ")
         for fa_post in comparison.unmatched_source_posts():
-            print(f"- {fa_post.link}")
+            print(f"- {fa_post.link} \"{fa_post.title}\"")
         print("Unmatched posts from target: ")
         for weasyl_post in comparison.unmatched_target_posts():
-            print(f"- {weasyl_post.link}")
+            print(f"- {weasyl_post.link} \"{weasyl_post.title}\"")
+        print("---")
 
 
 class ProfileComparison:
