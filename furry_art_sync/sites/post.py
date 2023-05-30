@@ -1,5 +1,10 @@
 import hashlib
+import os.path
 from abc import abstractmethod, ABC
+from functools import cached_property
+
+import imagehash
+from PIL import Image
 from pathlib import Path
 from typing import Optional, List, Dict, TYPE_CHECKING
 
@@ -10,6 +15,9 @@ if TYPE_CHECKING:
 
 
 class Post(ABC):
+    EXTENSIONS_IMAGE = ["png", "gif", "jpg", "jpeg"]
+    EXTENSIONS_ANIM = ["gif", "png"]
+    EXTENSIONS_VIDEO = ["webm", "mp4"]
 
     def __init__(self, file_path: Path, metadata_path: Path, metadata_raw: Dict, site_profile: "SiteProfile") -> None:
         self.file_path = file_path
@@ -39,17 +47,53 @@ class Post(ABC):
         raise NotImplementedError
 
     @property
+    def file_ext(self) -> str:
+        _, ext = os.path.splitext(self.file_path)
+        return ext.lower().removeprefix(".")
+
+    @cached_property
+    def is_static_image(self) -> bool:
+        if self.file_ext.lower() not in self.EXTENSIONS_IMAGE:
+            return False
+        with Image.open(self.file_path) as img:
+            return not getattr(img, "is_animated", False)
+
+    @cached_property
+    def colour_hash(self) -> Optional[imagehash.ImageHash]:
+        if not self.is_static_image:
+            return None
+        with Image.open(self.file_path) as img:
+            return imagehash.colorhash(img)
+
+    @cached_property
+    def high_fidelity_phash(self) -> Optional[imagehash.ImageHash]:
+        if not self.is_static_image:
+            return None
+        with Image.open(self.file_path) as img:
+            return imagehash.phash(img, hash_size=32)
+
+    @cached_property
+    def low_fidelity_phash(self) -> Optional[imagehash.ImageHash]:
+        if not self.is_static_image:
+            return None
+        with Image.open(self.file_path) as img:
+            return imagehash.phash(img, hash_size=8)
+
+    @cached_property
     def md5_hash(self) -> str:
-        if self._md5_hash is not None:
-            return self._md5_hash
         with open(self.file_path, "rb") as f:
-            self._md5_hash = hashlib.md5(f.read()).hexdigest()
-        return self._md5_hash
+            return hashlib.md5(f.read()).hexdigest()
 
     def matches_post(self, other: "Post") -> Optional[PostMatch]:
         if self.md5_hash == other.md5_hash:
             return PostMatch("MD5 hashes match")
-        pass  # TODO
+        if self.is_static_image and other.is_static_image:
+            if self.colour_hash - other.colour_hash < 2:
+                if self.high_fidelity_phash == other.high_fidelity_phash:
+                    return PostMatch("HD image hashes match")
+                if self.low_fidelity_phash == other.low_fidelity_phash:
+                    return PostMatch("Low detail image hashes match")
+        pass  # TODO: Implement for gifs?
 
     def matches_any_posts(self, others: List["Post"]) -> Dict["Post", PostMatch]:
         return {
