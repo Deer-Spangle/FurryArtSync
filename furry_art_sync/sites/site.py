@@ -3,7 +3,7 @@ import json
 import os.path
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Dict, TYPE_CHECKING
+from typing import List, Dict, TYPE_CHECKING, Optional, Type
 
 import gallery_dl
 
@@ -79,4 +79,19 @@ class SiteProfile(ABC):
     @classmethod
     @abstractmethod
     def user_setup_profile(cls) -> "SiteProfile":
+        raise NotImplementedError
+
+    def uploader_class(self) -> Optional[Type["SiteUploader"]]:
+        return None
+
+
+class SiteUploader(ABC):
+
+    @classmethod
+    @abstractmethod
+    def user_setup_uploader(cls) -> "SiteUploader":
+        raise NotImplementedError
+
+    @abstractmethod
+    def upload_post(self, post: "Post") -> "Post":
         raise NotImplementedError

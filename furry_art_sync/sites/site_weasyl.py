@@ -1,13 +1,13 @@
 import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Type
 
 import gallery_dl
 import requests
 
 from furry_art_sync.datastore import Datastore
 from furry_art_sync.sites.post import Post, PostRating
-from furry_art_sync.sites.site import SiteProfile
+from furry_art_sync.sites.site import SiteProfile, SiteUploader
 
 
 class WeasylPost(Post):
@@ -38,6 +38,64 @@ class WeasylPost(Post):
     @property
     def datetime_posted(self) -> Optional[datetime.datetime]:
         return datetime.datetime.fromisoformat(self.metadata_raw["posted_at"])
+
+
+class WeasylUploader(SiteUploader):
+
+    def __init__(self, weasyl_cookie: str) -> None:
+        self.weasyl_cookie = weasyl_cookie
+
+    @classmethod
+    def user_setup_uploader(cls) -> "WeasylUploader":
+        print("In order to upload to weasyl, your weasyl cookie is required.")
+        print(
+            "Please navigate to https://weasyl.com, login as the account you wish to upload posts as, and access your "
+            "browser's development tools to find your cookie values"
+        )
+        weasyl_cookie = input("Please enter the value of your \"WZL\" cookie from the website: ")
+        return cls(weasyl_cookie)
+
+    def upload_post(self, post: "Post") -> "Post":
+        upload_rating = {
+            PostRating.SAFE: 10,
+            PostRating.MATURE: 30,
+            PostRating.EXPLICIT: 40,
+        }.get(post.rating, 40)
+        data = {
+            "title": post.title,
+            "rating": upload_rating,
+            "content": post.description,
+            "tags": " ".join(post.tags or []),
+        }
+        files = {
+            "submitfile": open(post.file_path, "rb"),
+        }
+        post_type = {
+            "jpg": "visual",
+            "jpeg": "visual",
+            "png": "visual",
+            "gif": "visual",
+            "pdf": "literary",
+            "txt": "literary",
+            "mp3": "multimedia",
+            "swf": "multimedia",
+        }.get(post.file_ext)
+        if post_type is None:
+            raise ValueError(f"This post file type, \".{post.file_ext}\" is not supported on Weasyl")
+        url = f"https://weasyl.com/submit/{post_type}"
+        if post_type in ["literary", "multimedia"]:
+            files["coverfile"] = None  # TODO
+        resp = requests.post(
+            url,
+            data=data,
+            files=files,
+            headers={
+                "Referer": url,
+                "Origin": "https://www.weasyl.com",
+                "Host": "www.weasyl.com",
+              },
+        )
+        # TODO: Check resp, find submission link
 
 
 class WeasylSiteProfile(SiteProfile):
@@ -101,3 +159,6 @@ class WeasylSiteProfile(SiteProfile):
         username = raw_username.lower()
         api_key = input("Please go to https://www.weasyl.com/control/apikeys and generate an API key: ")
         return cls(username, api_key)
+
+    def uploader_class(self) -> Optional[Type["SiteUploader"]]:
+        return WeasylUploader

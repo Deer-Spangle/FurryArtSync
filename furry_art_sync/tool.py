@@ -101,6 +101,24 @@ class Tool:
         for weasyl_post in comparison.unmatched_target_posts():
             print(f"- {weasyl_post.link} \"{weasyl_post.title}\"")
         print("---")
+        weasyl_upload_class = weasyl_profile.uploader_class()
+        if not weasyl_upload_class:
+            print("No uploader is configured for this target, so cannot automatically sync your gallery")
+            return
+        upload_option_resp = input("Would you like to upload missing posts to Weasyl? [yN] ")
+        if upload_option_resp.lower() not in ["y", "yes"]:
+            print("Okay, we will not sync your gallery")
+            return
+        weasyl_uploader = weasyl_upload_class.user_setup_uploader()
+        fa_unmatched = sorted(comparison.unmatched_source_posts(), key=lambda post: post.datetime_posted)
+        for fa_post in fa_unmatched:
+            print(f"This post exists on FA, but not Weasyl: {fa_post.link}, \"{fa_post.title}\"")
+            upload_post_resp = input("Would you like to upload that post to Weasyl? [yN]")
+            if upload_post_resp.lower() in ["y", "yes"]:
+                weasyl_post = weasyl_uploader.upload_post(fa_post)
+                print(f"Post uploaded: {weasyl_post.link}")
+            print("--")
+        print("All done!")
 
 
 class ProfileComparison:
