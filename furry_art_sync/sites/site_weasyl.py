@@ -55,11 +55,20 @@ class WeasylUploader(SiteUploader):
             PostRating.MATURE: 30,
             PostRating.EXPLICIT: 40,
         }.get(post.rating, 40)
+        tags = post.tags or []
+        tags_modified = False
+        while len(tags) < 2:
+            print("ERROR: Weasyl requires at least 2 tags on submissions.")
+            new_tags = input("Please enter at least 2 tags, separated by commas")
+            tags = [tag.strip().replace(" ", "_") for tag in new_tags.split(",")]
+            tags_modified = True
+        if tags_modified:
+            print(f"Tags have been set to {tags} for Weasyl upload")
         data = {
             "title": post.title,
             "rating": upload_rating,
             "content": post.description,
-            "tags": " ".join(post.tags or []),
+            "tags": " ".join(tags),
         }
         files = {
             "submitfile": open(post.file_path, "rb"),
