@@ -42,18 +42,12 @@ class WeasylPost(Post):
 
 class WeasylUploader(SiteUploader):
 
-    def __init__(self, weasyl_cookie: str) -> None:
-        self.weasyl_cookie = weasyl_cookie
+    def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
 
     @classmethod
-    def user_setup_uploader(cls) -> "WeasylUploader":
-        print("In order to upload to weasyl, your weasyl cookie is required.")
-        print(
-            "Please navigate to https://weasyl.com, login as the account you wish to upload posts as, and access your "
-            "browser's development tools to find your cookie values"
-        )
-        weasyl_cookie = input("Please enter the value of your \"WZL\" cookie from the website: ")
-        return cls(weasyl_cookie)
+    def user_setup_uploader(cls, site_profile: "WeasylSiteProfile") -> "WeasylUploader":
+        return cls(site_profile.api_key)
 
     def upload_post(self, post: "Post") -> "Post":
         upload_rating = {
@@ -93,6 +87,7 @@ class WeasylUploader(SiteUploader):
                 "Referer": url,
                 "Origin": "https://www.weasyl.com",
                 "Host": "www.weasyl.com",
+                "X-Weasyl-API-Key": self.api_key,
               },
         )
         # TODO: Check resp, find submission link

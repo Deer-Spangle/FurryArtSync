@@ -89,7 +89,7 @@ class SiteUploader(ABC):
 
     @classmethod
     @abstractmethod
-    def user_setup_uploader(cls) -> "SiteUploader":
+    def user_setup_uploader(cls, site_profile: SiteProfile) -> "SiteUploader":
         raise NotImplementedError
 
     @abstractmethod
