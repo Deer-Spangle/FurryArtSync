@@ -1,4 +1,7 @@
 import datetime
+import json
+import os
+import re
 from pathlib import Path
 from typing import List, Dict, Optional, Type
 
@@ -42,12 +45,13 @@ class WeasylPost(Post):
 
 class WeasylUploader(SiteUploader):
 
-    def __init__(self, api_key: str) -> None:
-        self.api_key = api_key
+    def __init__(self, profile: "WeasylSiteProfile") -> None:
+        self.profile = profile
+        self.api_key = profile.api_key
 
     @classmethod
     def user_setup_uploader(cls, site_profile: "WeasylSiteProfile") -> "WeasylUploader":
-        return cls(site_profile.api_key)
+        return cls(site_profile)
 
     def upload_post(self, post: "Post") -> "Post":
         upload_rating = {
@@ -99,7 +103,27 @@ class WeasylUploader(SiteUploader):
                 "X-Weasyl-API-Key": self.api_key,
               },
         )
-        # TODO: Check resp, find submission link
+        if resp.status_code != 200:
+            raise ValueError("Failed to upload to Weasyl")
+        new_url = resp.url
+        new_id = re.compile("submissions/([0-9]+)/").search(new_url).group(1)
+        new_data = requests.get(
+            f"https://www.weasyl.com/api/submissions/{new_id}/view",
+            headers={
+                "X-Weasyl-API-Key": self.api_key
+            }
+        ).json()
+        os.makedirs(self.profile.profile_directory(), exist_ok=True)
+        data_path = self.profile.profile_directory() / f"{new_id}.json"
+        with open(data_path, "w") as f:
+            json.dump(new_data, f, indent=2)
+        content_url = new_data["media"]["submission"][0]["url"]
+        content_resp = requests.get(content_url)
+        new_ext = new_data["media"]["submission"][0]["url"].split(".")[-1].lower()
+        file_path = self.profile.profile_directory() / f"{new_id}.{new_ext}"
+        with open(file_path, "wb") as f:
+            f.write(content_resp.content)
+        return WeasylPost(file_path, data_path, new_data, self.profile)
 
 
 class WeasylSiteProfile(SiteProfile):
@@ -124,7 +148,7 @@ class WeasylSiteProfile(SiteProfile):
             "https://weasyl.com/api/whoami",
             headers={
                 "X-Weasyl-API-Key": self.api_key
-            }
+            },
         )
         if api_resp.status_code != 200:
             print("Error: Failure authenticating to Weasyl API")
