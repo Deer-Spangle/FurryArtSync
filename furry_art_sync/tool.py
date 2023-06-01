@@ -109,7 +109,7 @@ class Tool:
         if upload_option_resp.lower() not in ["y", "yes"]:
             print("Okay, we will not sync your gallery")
             return
-        weasyl_uploader = weasyl_upload_class.user_setup_uploader()
+        weasyl_uploader = weasyl_upload_class.user_setup_uploader(weasyl_profile)
         fa_unmatched = sorted(comparison.unmatched_source_posts(), key=lambda post: post.datetime_posted)
         for fa_post in fa_unmatched:
             print(f"This post exists on FA, but not Weasyl: {fa_post.link}, \"{fa_post.title}\"")
