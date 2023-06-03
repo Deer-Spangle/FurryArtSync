@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "furryartsync"
+name = "furry_art_sync"
 version = "0.1.0"
 description = "A tool to synchronise art galleries across furry art websites"
 authors = ["Deer-Spangle"]
